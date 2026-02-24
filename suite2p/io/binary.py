@@ -38,7 +38,10 @@ class BinaryFile:
         elif not write:
             n_frames = self.n_frames
         shape = (n_frames, self.Ly, self.Lx)
-        mode = "w+" if write else "r+"
+        if write:
+            mode = "r+" if os.path.exists(self.filename) else "w+"
+        else:
+            mode = "r"
         self.file = np.memmap(self.filename, mode=mode, dtype=self.dtype, shape=shape)
         self._index = 0
         self._can_read = True
