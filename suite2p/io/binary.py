@@ -39,9 +39,12 @@ class BinaryFile:
         self.dtype = dtype
         self.write = write
 
-        if write and n_frames is None and not os.path.exists(self.filename):
-            raise ValueError(
-                "need to provide number of frames n_frames when writing file")
+        if write:
+            if n_frames is None and not os.path.exists(self.filename):
+                raise ValueError(
+                    "need to provide number of frames n_frames when writing file")
+            else:
+                n_frames = self.n_frames
         elif not write:
             n_frames = self.n_frames
         shape = (n_frames, self.Ly, self.Lx)
