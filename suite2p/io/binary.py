@@ -13,7 +13,7 @@ import numpy as np
 class BinaryFile:
 
     def __init__(self, Ly: int, Lx: int, filename: str, n_frames: int = None,
-                 dtype: str = "int16"):
+                 dtype: str = "int16", write=False):
         """
         Creates/Opens a Suite2p BinaryFile for reading and/or writing image data that acts like numpy array
 
@@ -25,14 +25,21 @@ class BinaryFile:
             The width of each frame
         filename: str
             The filename of the file to read from or write to
+        n_frames : int, optional
+            Number of frames. Required when creating a new file for writing.
+            Inferred from file size when reading.
+        dtype : str, optional (default "int16")
+            Data type of each pixel value.
+        write : bool, optional (default False)
+            If True, open the file for reading and writing. If False, open read-only.
         """
         self.Ly = Ly
         self.Lx = Lx
         self.filename = filename
         self.dtype = dtype
-        write = (not os.path.exists(self.filename))
+        self.write = write
 
-        if write and n_frames is None:
+        if write and n_frames is None and not os.path.exists(self.filename):
             raise ValueError(
                 "need to provide number of frames n_frames when writing file")
         elif not write:
