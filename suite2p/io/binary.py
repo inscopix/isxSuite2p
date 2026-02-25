@@ -31,19 +31,22 @@ class BinaryFile:
         dtype : str, optional (default "int16")
             Data type of each pixel value.
         write : bool, optional (default False)
+            If not specified, and the file does not exist, automatically set to True.
             If True, open the file for reading and writing. If False, open read-only.
         """
         self.Ly = Ly
         self.Lx = Lx
         self.filename = filename
         self.dtype = dtype
-        self.write = write
+        exists = os.path.exists(self.filename)
+        write = write or not exists
 
-        if write and n_frames is None and not os.path.exists(self.filename):
-            raise ValueError(
-                "need to provide number of frames n_frames when writing file")
-        elif write and n_frames is None and os.path.exists(self.filename):
-            n_frames = self.n_frames
+        if write and n_frames is None:
+            if not exists:
+                raise ValueError(
+                    "need to provide number of frames n_frames when writing file")
+            else:
+                n_frames = self.n_frames
         elif not write:
             n_frames = self.n_frames
         shape = (n_frames, self.Ly, self.Lx)
