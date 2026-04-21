@@ -1,0 +1,73 @@
+site_name: Suite2p Documentation
+
+repo_name: mouseland/suite2p
+repo_url: https://github.com/mouseland/suite2p
+
+theme:
+  name: material
+  logo: _static/favicon.ico
+  favicon: _static/favicon.ico
+  palette:
+    primary: green
+  features:
+    - navigation.expand
+    
+nav:
+  - Home: index.md
+  - Basics:
+      - Installation: installation.md
+      - Inputs: inputs.md
+      - Parameters: parameters.md
+      - Using the GUI: gui.md
+      - Outputs: outputs.md
+      - Multiday recordings: multiday.md
+      - Developer Doc: developer_doc.md
+      - Frequently asked questions: FAQ.md
+  - How it Works:
+      - Registration: registration.md
+      - ROI Detection: roidetection.md
+      - Signal Extraction: roiextraction.md
+      - Spike Deconvolution: deconvolution.md
+      - ROI Classification: classification.md
+  - API:
+      - IO: api/io.md
+      - Registration: api/registration.md 
+      - Detection: api/detection.md
+      - Extraction: api/extraction.md
+      - Classification: api/classification.md
+      - GUI: api/gui.md
+  
+#hooks:
+#  - generate_settings_docs.py # Necessary for parameters.md generation
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: true
+            separate_signature: true
+            show_if_no_docstring: false
+            docstring_style: numpy
+            members_order: alphabetical
+            
+extra_css:
+  - css/API.css # Necessary for API documentation
+
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.emoji
+  - pymdownx.tabbed
+  - pymdownx.details
+  - pymdownx.snippets
+  - pymdownx.inlinehilite
+  - pymdownx.extra
+  - toc:
+      permalink: "#"
+      permalink_title: Anchor link to this section for reference
+
+  
