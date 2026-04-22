@@ -98,7 +98,9 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
         #ops["meanImg"] /= ops["nframes"]
         #if nchannels>1:
         #    ops["meanImg_chan2"] /= ops["nframes"]
-        np.save(db["ops_path"], db)
+        # Save db and settings to each plane folder
+        np.save(db["db_path"], db)
+        np.save(db["settings_path"], settings)
     # close all binary files and write ops files
     for j in range(0, nplanes):
         reg_file[j].close()
