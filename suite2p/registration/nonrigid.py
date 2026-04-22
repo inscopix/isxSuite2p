@@ -410,11 +410,36 @@ def transform_data(data, nblocks, xblock, yblock, ymax1, xmax1,
                          torch.arange(Lx, dtype=torch.float, device=device), indexing="ij")
     yb = np.array(yblock[::nblocks[1]]).mean(axis=1).astype("int")
     xb = np.array(xblock[:nblocks[1]]).mean(axis=1).astype("int")
-    Lyc, Lxc = int(yb.max() - yb.min()), int(xb.max() - xb.min())
-    yxup = F.interpolate(torch.stack((ymax1, xmax1), dim=1), 
-                         size=(Lyc, Lxc), mode="bilinear", align_corners=True)
-    yxup = F.pad(yxup, (int(xb.min()), Lx - int(xb.max()), 
-                        int(yb.min()), Ly - int(yb.max())), mode="replicate")
+    # Lyc, Lxc = int(yb.max() - yb.min()), int(xb.max() - xb.min())
+
+    # Ensure interpolate output size is valid even for a single block in a dimension 
+    Lyc = max(1, int(yb.max() - yb.min()))
+    Lxc = max(1, int(xb.max() - xb.min()))
+
+    yxup = F.interpolate(
+        torch.stack((ymax1, xmax1), dim=1),
+        size=(Lyc, Lxc),
+        mode="bilinear",
+        align_corners=True,
+    ) 
+
+    # If you pad later, make the single-block case safe (right/bottom must be non-negative) 
+    xb_min = int(xb.min())
+    xb_max = int(xb.max())
+    yb_min = int(yb.min())
+    yb_max = int(yb.max())
+
+    pad_left = max(0, xb_min)
+    pad_right = max(0, Lx - xb_max)
+    pad_top = max(0, yb_min)
+    pad_bottom = max(0, Ly - yb_max)
+
+    yxup = F.pad(yxup, (pad_left, pad_right, pad_top, pad_bottom), mode="replicate")`
+
+    # yxup = F.interpolate(torch.stack((ymax1, xmax1), dim=1), 
+    #                      size=(Lyc, Lxc), mode="bilinear", align_corners=True)
+    # yxup = F.pad(yxup, (int(xb.min()), Lx - int(xb.max()), 
+    #                     int(yb.min()), Ly - int(yb.max())), mode="replicate")
     
     if data_ups is not None and counts_ups is not None:
         ups = torch.Tensor([data_ups.shape[0] // Ly, data_ups.shape[1] // Lx]).to(device)
