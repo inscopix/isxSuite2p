@@ -12,7 +12,7 @@ except (ModuleNotFoundError, ImportError):
     HAS_ISX = False
 
 
-def isxd_to_binary(ops):
+def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
     """  finds Inscopix isxd files and writes them to binaries
 
     Parameters
