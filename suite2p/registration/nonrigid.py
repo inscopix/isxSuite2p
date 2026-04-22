@@ -434,7 +434,7 @@ def transform_data(data, nblocks, xblock, yblock, ymax1, xmax1,
     pad_top = max(0, yb_min)
     pad_bottom = max(0, Ly - yb_max)
 
-    yxup = F.pad(yxup, (pad_left, pad_right, pad_top, pad_bottom), mode="replicate")`
+    yxup = F.pad(yxup, (pad_left, pad_right, pad_top, pad_bottom), mode="replicate")
 
     # yxup = F.interpolate(torch.stack((ymax1, xmax1), dim=1), 
     #                      size=(Lyc, Lxc), mode="bilinear", align_corners=True)
