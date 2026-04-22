@@ -421,7 +421,7 @@ def transform_data(data, nblocks, xblock, yblock, ymax1, xmax1,
         size=(Lyc, Lxc),
         mode="bilinear",
         align_corners=True,
-    ) 
+    )
 
     # If you pad later, make the single-block case safe (right/bottom must be non-negative) 
     xb_min = int(xb.min())
