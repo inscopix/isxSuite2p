@@ -30,7 +30,7 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
     if not HAS_ISX:
         raise ImportError("Inscopix isx is required for this file type, please 'pip install isx'")
 
-    dbs = utils.init_dbs(dbs)
+    # dbs = utils.init_dbs(dbs)
     # the following should be taken from the metadata and not needed but the files are initialized before...
     nplanes = dbs[0]["nplanes"]
     nchannels = dbs[0]["nchannels"]
