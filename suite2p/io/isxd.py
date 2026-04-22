@@ -36,7 +36,7 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
     nchannels = dbs[0]["nchannels"]
     # open all binary files for writing
     # ops1, file_list, reg_file, reg_file_chan2 = utils.find_files_open_binaries(ops1)
-    file_list = dbs[0]["filelist"]
+    file_list = dbs[0]["file_list"]
     iall = 0
     for j in range(dbs[0]["nplanes"]):
         dbs[j]["nframes_per_folder"] = np.zeros(len(file_list), np.int32)
