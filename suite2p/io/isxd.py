@@ -106,4 +106,4 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
         reg_file[j].close()
         if nchannels > 1:
             reg_file_chan2[j].close()
-    return dbs[0]
+    return dbs
