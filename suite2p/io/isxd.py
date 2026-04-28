@@ -43,8 +43,9 @@ def isxd_to_binary(ops):
 
     for ifile, fname in enumerate(file_list):
         f = isx.Movie.read(fname)
-        nplanes = 1  #f.shape[1]
-        nchannels = 1  #f.shape[2]
+        # The following two lines break multiplane support
+        # nplanes = 1  #f.shape[1]
+        # nchannels = 1  #f.shape[2]
         nframes = f.timing.num_samples
         iblocks = np.arange(0, nframes, ops1[0]["batch_size"])
         if iblocks[-1] < nframes:
