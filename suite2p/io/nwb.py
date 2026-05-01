@@ -398,6 +398,7 @@ def save_nwb(save_folder):
             grid_spacing_unit="microns",
         )
         # link to external data
+        external_data = []
         if settings["filelist"] != [""] and ".ome.tif" in settings["filelist"][0]:
             external_data = [settings["filelist"][0]]
         image_series = TwoPhotonSeries(
