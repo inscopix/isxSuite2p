@@ -134,11 +134,14 @@ def pipeline(f_reg, f_raw=None, f_reg_chan2=None, f_raw_chan2=None,
         print("----------- Total %0.2f sec" % plane_times["registration"])
         n_frames, Ly, Lx = f_reg.shape
 
+        print(f"-----------n_frames, Ly, Lx: {n_frames, Ly, Lx}")
+
         if ops["two_step_registration"] and ops["keep_movie_raw"]:
             print("----------- REGISTRATION STEP 2")
             print("(making mean image (excluding bad frames)")
             nsamps = min(n_frames, 1000)
             inds = np.linspace(0, n_frames, 1 + nsamps).astype(np.int64)[:-1]
+            print(f"-----------inds, nsamps: {inds, nsamps}")
             if align_by_chan2:
                 refImg = f_reg_chan2[inds].astype(np.float32).mean(axis=0)
             else:
