@@ -34,6 +34,9 @@ def isxd_to_binary(ops):
     # the following should be taken from the metadata and not needed but the files are initialized before...
     nplanes = ops1[0]["nplanes"]
     nchannels = ops1[0]["nchannels"]
+    ncp = nplanes * nchannels
+    nfunc = ops1[0]["functional_chan"] - 1 if nchannels > 1 else 0
+
     # open all binary files for writing
     ops1, file_list, reg_file, reg_file_chan2 = utils.find_files_open_binaries(ops1)
     iall = 0
@@ -63,8 +66,12 @@ def isxd_to_binary(ops):
             im2mean = im.mean(axis=0).astype(np.float32) / len(iblocks)
             for ichan in range(nchannels):
                 nframes = im.shape[0]
-                im2write = im[:]
+                # im2write = im[:]
                 for j in range(0, nplanes):
+                    i0 = nchannels * ((j) % nplanes)
+                    # logger.info(f"frame indices for plane: {np.arange(int(i0) + nfunc, nframes, ncp)}")
+                    im2write =  im[np.arange(int(i0) + nfunc, nframes, ncp), :, :]
+
                     if iall == 0:
                         ops1[j]["meanImg"] = np.zeros((im.shape[1], im.shape[2]),
                                                       np.float32)
