@@ -66,10 +66,8 @@ def isxd_to_binary(ops):
             im2mean = im.mean(axis=0).astype(np.float32) / len(iblocks)
             for ichan in range(nchannels):
                 nframes = im.shape[0]
-                # im2write = im[:]
                 for j in range(0, nplanes):
                     i0 = nchannels * ((j) % nplanes)
-                    # logger.info(f"frame indices for plane: {np.arange(int(i0) + nfunc, nframes, ncp)}")
                     im2write =  im[np.arange(int(i0) + nfunc, nframes, ncp), :, :]
 
                     if iall == 0:
