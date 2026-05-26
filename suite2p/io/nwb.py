@@ -41,6 +41,7 @@ from .. import default_settings
 
 try:
     from pynwb import NWBHDF5IO, NWBFile
+    from pynwb.file import Subject
     from pynwb.base import Images
     from pynwb.image import GrayscaleImage
     from pynwb.ophys import (
@@ -373,6 +374,13 @@ def save_nwb(save_folder):
             session_start_time=session_start_time,
         )
         logger.info(nwbfile)
+
+        nwbfile.subject = Subject(
+            subject_id="your_subject_id",
+            species="Mus musculus",
+            age="P20D",
+            sex="M"
+        )
 
         device = nwbfile.create_device(
             name="Microscope",

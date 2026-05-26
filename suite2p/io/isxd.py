@@ -11,6 +11,9 @@ try:
 except (ModuleNotFoundError, ImportError):
     HAS_ISX = False
 
+import logging 
+logger = logging.getLogger(__name__)
+
 
 def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
     """  finds Inscopix isxd files and writes them to binaries
@@ -34,6 +37,9 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
     # the following should be taken from the metadata and not needed but the files are initialized before...
     nplanes = dbs[0]["nplanes"]
     nchannels = dbs[0]["nchannels"]
+    ncp = nplanes * nchannels
+    nfunc = dbs[0]["functional_chan"] - 1 if nchannels > 1 else 0
+
     # open all binary files for writing
     # ops1, file_list, reg_file, reg_file_chan2 = utils.find_files_open_binaries(ops1)
     file_list = dbs[0]["file_list"]
@@ -44,18 +50,12 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
 
     for ifile, fname in enumerate(file_list):
         f = isx.Movie.read(fname)
-        nplanes = 1  #f.shape[1]
-        nchannels = 1  #f.shape[2]
         nframes = f.timing.num_samples
         iblocks = np.arange(0, nframes, dbs[0]["batch_size"])
         if iblocks[-1] < nframes:
             iblocks = np.append(iblocks, nframes)
 
         # data = nframes x nplanes x nchannels x pixels x pixels
-        if nchannels > 1:
-            nfunc = dbs[0]["functional_chan"] - 1
-        else:
-            nfunc = 0
         # loop over all frames
         for ichunk, onset in enumerate(iblocks[:-1]):
             offset = iblocks[ichunk + 1]
@@ -63,9 +63,11 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
             im2mean = im.mean(axis=0).astype(np.float32) / len(iblocks)
             for ichan in range(nchannels):
                 nframes = im.shape[0]
-                im2write = im[:]
                 for j in range(0, nplanes):
-                    if iall == 0:
+                    i0 = nchannels * ((j) % nplanes)
+                    im2write =  im[np.arange(int(i0) + nfunc, nframes, ncp), :, :]
+
+                    if ik == 0:
                         dbs[j]["meanImg"] = np.zeros((im.shape[1], im.shape[2]),
                                                       np.float32)
                         if nchannels > 1:
@@ -84,7 +86,6 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
                     dbs[j]["nframes"] += im2write.shape[0]
                     dbs[j]["nframes_per_folder"][ifile] += im2write.shape[0]
             ik += nframes
-            iall += nframes
 
     # write ops files
     do_registration = settings["run"]["do_registration"]

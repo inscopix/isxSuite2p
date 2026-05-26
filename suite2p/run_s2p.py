@@ -294,10 +294,10 @@ def run_plane(db, settings, db_path=None, stat=None):
     if raw_file is not None:
         logger.info(f"raw binary path: {raw_file}")
     null = contextlib.nullcontext()
-    with io.BinaryFile(Ly=Ly, Lx=Lx, filename=raw_file, n_frames=n_frames, write=False) \
+    with io.BinaryFile(Ly=Ly, Lx=Lx, filename=raw_file, n_frames=n_frames, write=True) \
             if raw else null as f_raw, \
          io.BinaryFile(Ly=Ly, Lx=Lx, filename=reg_file, n_frames=n_frames, write=True) as f_reg, \
-         io.BinaryFile(Ly=Ly, Lx=Lx, filename=raw_file_chan2, n_frames=n_frames, write=False) \
+         io.BinaryFile(Ly=Ly, Lx=Lx, filename=raw_file_chan2, n_frames=n_frames, write=True) \
             if raw and twoc else null as f_raw_chan2,\
          io.BinaryFile(Ly=Ly, Lx=Lx, filename=reg_file_chan2, n_frames=n_frames, write=True) \
             if twoc else null as f_reg_chan2:

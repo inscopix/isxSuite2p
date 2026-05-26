@@ -7,6 +7,10 @@ from .utils import convolve, complex_fft2, spatial_taper, temporal_smooth, ref_s
 
 import torch
 
+import logging 
+logger = logging.getLogger(__name__)
+
+
 def compute_masks_ref_smooth_fft(refImg, maskSlope, smooth_sigma):
     """
     Compute multiplicative and additive masks used for spatial tapering in rigid registration, 
@@ -97,7 +101,8 @@ def phasecorr(frames, cfRefImg, maskMul, maskOffset, maxregshift, smooth_sigma_t
     cc = torch.real(cc)
     
     cc = temporal_smooth(cc, smooth_sigma_time) if smooth_sigma_time > 0 else cc
-
+    if isinstance(cc, np.ndarray):
+        cc = torch.from_numpy(cc).to(frames.device).float()
     imax = torch.stack([torch.argmax(cc[t]) for t in range(data.shape[0])], dim=0)
     ymax, xmax = torch.div(imax, 2 * lcorr + 1, rounding_mode="floor"), imax % (2 * lcorr + 1)
     cmax = cc[torch.arange(len(cc)), ymax, xmax]
