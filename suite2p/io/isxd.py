@@ -90,7 +90,7 @@ def isxd_to_binary(ops):
 
                     ops1[0]["nframes"] += im2write.shape[0]
                     ops1[0]["nframes_per_folder"][ifile] += im2write.shape[0]
-            elif nplanes > 1:
+            else:
                 nframes = im.shape[0]
                 for j in range(0, nplanes):
                     i0 = (j) % nplanes
