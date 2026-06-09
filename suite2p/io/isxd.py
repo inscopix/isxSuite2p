@@ -40,6 +40,10 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
     ncp = nplanes * nchannels
     nfunc = dbs[0]["functional_chan"] - 1 if nchannels > 1 else 0
 
+    if nplanes > 1 and nchannels > 1:
+        raise RuntimeError("ISXD files only support multi-plane or multi-channel data, but not both. " 
+                           "Please review input ops and ensure either nplanes >= 1 OR nchannels >= 1.")
+
     # open all binary files for writing
     # ops1, file_list, reg_file, reg_file_chan2 = utils.find_files_open_binaries(ops1)
     file_list = dbs[0]["file_list"]
@@ -55,36 +59,52 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
         if iblocks[-1] < nframes:
             iblocks = np.append(iblocks, nframes)
 
-        # data = nframes x nplanes x nchannels x pixels x pixels
+        # data = nframes x width x height x (nplanes OR nchannels)
         # loop over all frames
         for ichunk, onset in enumerate(iblocks[:-1]):
             offset = iblocks[ichunk + 1]
             im = np.array([f.get_frame_data(x) for x in np.arange(onset, offset)])
             im2mean = im.mean(axis=0).astype(np.float32) / len(iblocks)
-            for ichan in range(nchannels):
-                nframes = im.shape[0]
-                for j in range(0, nplanes):
-                    i0 = nchannels * ((j) % nplanes)
-                    im2write =  im[np.arange(int(i0) + nfunc, nframes, ncp), :, :]
 
-                    if ik == 0:
-                        dbs[j]["meanImg"] = np.zeros((im.shape[1], im.shape[2]),
-                                                      np.float32)
-                        if nchannels > 1:
-                            dbs[j]["meanImg_chan2"] = np.zeros(
-                                (im.shape[1], im.shape[2]), np.float32)
-                        dbs[j]["nframes"] = 0
+            if ik == 0:
+                for j in range(nplanes):
+                    dbs[j]["meanImg"] = np.zeros((im.shape[1], im.shape[2]),
+                                                    np.float32)
+                    if nchannels > 1:
+                        dbs[j]["meanImg_chan2"] = np.zeros(
+                            (im.shape[1], im.shape[2]), np.float32)
+                    dbs[j]["nframes"] = 0
+
+            if nchannels > 1:
+                for ichan in range(nchannels):
+                    nframes = im.shape[0]
+                    i0 = (ichan) % nplanes
+                    im2write =  im[np.arange(int(i0), nframes, nchannels), :, :]
+
                     if ichan == nfunc:
-                        dbs[j]["meanImg"] += np.squeeze(im2mean)
+                        dbs[0]["meanImg"] += np.squeeze(im2mean)
                         reg_file[j].write(
                             bytearray(im2write[:].astype("int16")))
                     else:
-                        dbs[j]["meanImg_chan2"] += np.squeeze(im2mean)
+                        dbs[0]["meanImg_chan2"] += np.squeeze(im2mean)
                         reg_file_chan2[j].write(
                             bytearray(im2write[:].astype("int16")))
 
+                    dbs[0]["nframes"] += im2write.shape[0]
+                    dbs[0]["nframes_per_folder"][ifile] += im2write.shape[0]
+            else:
+                nframes = im.shape[0]
+                for j in range(0, nplanes):
+                    i0 = (j) % nplanes
+                    im2write =  im[np.arange(int(i0), nframes, nplanes), :, :]
+
+                    dbs[j]["meanImg"] += np.squeeze(im2mean)
+                    reg_file[j].write(
+                        bytearray(im2write[:].astype("int16")))
+
                     dbs[j]["nframes"] += im2write.shape[0]
                     dbs[j]["nframes_per_folder"][ifile] += im2write.shape[0]
+
             ik += nframes
 
     # write ops files
