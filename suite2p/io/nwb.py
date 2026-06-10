@@ -407,7 +407,7 @@ def save_nwb(save_folder):
         )
         # link to external data
         external_data = []
-        if settings["filelist"] != [""] and ".ome.tif" in settings["filelist"][0]:
+        if settings.get("filelist") and settings["filelist"] != [""] and ".ome.tif" in settings["filelist"][0]:
             external_data = [settings["filelist"][0]]
         image_series = TwoPhotonSeries(
             name="TwoPhotonSeries",
