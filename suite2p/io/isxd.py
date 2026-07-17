@@ -33,7 +33,6 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
     # the following should be taken from the metadata and not needed but the files are initialized before...
     nplanes = dbs[0]["nplanes"]
     nchannels = dbs[0]["nchannels"]
-    ncp = nplanes * nchannels
     nfunc = dbs[0]["functional_chan"] - 1 if nchannels > 1 else 0
 
     if nplanes > 1 and nchannels > 1:
