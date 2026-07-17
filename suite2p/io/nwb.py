@@ -376,10 +376,10 @@ def save_nwb(save_folder):
         logger.info(nwbfile)
 
         nwbfile.subject = Subject(
-            subject_id="your_subject_id",
-            species="Mus musculus",
-            age="P20D",
-            sex="M"
+            subject_id="subject",
+            species="Species",
+            age="N/A",
+            sex="N/A"
         )
 
         device = nwbfile.create_device(

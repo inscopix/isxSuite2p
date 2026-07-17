@@ -11,9 +11,6 @@ try:
 except (ModuleNotFoundError, ImportError):
     HAS_ISX = False
 
-import logging 
-logger = logging.getLogger(__name__)
-
 
 def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
     """  finds Inscopix isxd files and writes them to binaries
@@ -33,7 +30,6 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
     if not HAS_ISX:
         raise ImportError("Inscopix isx is required for this file type, please 'pip install isx'")
 
-    # dbs = utils.init_dbs(dbs)
     # the following should be taken from the metadata and not needed but the files are initialized before...
     nplanes = dbs[0]["nplanes"]
     nchannels = dbs[0]["nchannels"]
@@ -45,13 +41,11 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
                            "Please review input ops and ensure either nplanes >= 1 OR nchannels >= 1.")
 
     # open all binary files for writing
-    # ops1, file_list, reg_file, reg_file_chan2 = utils.find_files_open_binaries(ops1)
     file_list = dbs[0]["file_list"]
-    iall = 0
     for j in range(dbs[0]["nplanes"]):
         dbs[j]["nframes_per_folder"] = np.zeros(len(file_list), np.int32)
-    ik = 0
-
+    
+    ik = 0 # track index of frame
     for ifile, fname in enumerate(file_list):
         f = isx.Movie.read(fname)
         nframes = f.timing.num_samples
@@ -67,6 +61,7 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
             im2mean = im.mean(axis=0).astype(np.float32) / len(iblocks)
 
             if ik == 0:
+                # initialize mean image of movie to calculate throughout loop
                 for j in range(nplanes):
                     dbs[j]["meanImg"] = np.zeros((im.shape[1], im.shape[2]),
                                                     np.float32)
@@ -76,6 +71,7 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
                     dbs[j]["nframes"] = 0
 
             if nchannels > 1:
+                # multi-channel data
                 for ichan in range(nchannels):
                     nframes = im.shape[0]
                     i0 = (ichan) % nplanes
@@ -93,6 +89,7 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
                     dbs[0]["nframes"] += im2write.shape[0]
                     dbs[0]["nframes_per_folder"][ifile] += im2write.shape[0]
             else:
+                # single-channel or multi-plane data
                 nframes = im.shape[0]
                 for j in range(0, nplanes):
                     i0 = (j) % nplanes
@@ -109,7 +106,6 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
 
     # write ops files
     do_registration = settings["run"]["do_registration"]
-    # do_nonrigid = ops1[0]["nonrigid"]
     for db in dbs:
         db["Ly"] = im.shape[1]
         db["Lx"] = im.shape[2]
