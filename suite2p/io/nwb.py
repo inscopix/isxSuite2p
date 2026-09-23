@@ -53,7 +53,7 @@ try:
     )
 
     NWB = True
-except ModuleNotFoundError:
+except ImportError:
     NWB = False
 
 
@@ -406,9 +406,11 @@ def save_nwb(save_folder):
             grid_spacing_unit="microns",
         )
         # link to external data
-        external_data = []
-        if settings.get("filelist") and settings["filelist"] != [""] and ".ome.tif" in settings["filelist"][0]:
-            external_data = [settings["filelist"][0]]
+        external_data = [""]
+        if settings.get("filelist") and settings["filelist"] != [""]:
+            f0 = settings["filelist"][0]
+            if isinstance(f0, str) and f0.lower().endswith(".ome.tif"):
+                external_data = [f0]
         image_series = TwoPhotonSeries(
             name="TwoPhotonSeries",
             dimension=[dbs[0]["Ly"], dbs[0]["Lx"]],

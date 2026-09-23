@@ -36,8 +36,10 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
     nfunc = dbs[0]["functional_chan"] - 1 if nchannels > 1 else 0
 
     if nplanes > 1 and nchannels > 1:
-        raise RuntimeError("ISXD files only support multi-plane or multi-channel data, but not both. " 
-                           "Please review input ops and ensure either nplanes >= 1 OR nchannels >= 1.")
+        raise RuntimeError(
+             "ISXD files support either multi-plane or multi-channel data, but not both. "
+             "Please set either nplanes == 1 or nchannels == 1."
+         )
 
     # open all binary files for writing
     file_list = dbs[0]["file_list"]
@@ -78,11 +80,11 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
 
                     if ichan == nfunc:
                         dbs[0]["meanImg"] += np.squeeze(im2mean)
-                        reg_file[j].write(
+                        reg_file[i0].write(
                             bytearray(im2write[:].astype("int16")))
                     else:
                         dbs[0]["meanImg_chan2"] += np.squeeze(im2mean)
-                        reg_file_chan2[j].write(
+                        reg_file_chan2[i0].write(
                             bytearray(im2write[:].astype("int16")))
 
                     dbs[0]["nframes"] += im2write.shape[0]
