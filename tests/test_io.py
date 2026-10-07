@@ -94,8 +94,8 @@ def test_h5_to_binary_produces_nonnegative_output_data(test_settings):
 def _run_isxd_to_binary(tmp_path, monkeypatch, *, frames, nplanes, nchannels, functional_chan=1, batch_size=3):
     class FakeMovie:
         def __init__(self, frames_):
-            self._frames = frames_
-            self.timing = SimpleNamespace(num_samples=frames_.shape[0])
+            self._frames = [np.asarray(f) for f in frames_]
+            self.timing = SimpleNamespace(num_samples=len(self._frames))
 
         def get_frame_data(self, idx):
             return self._frames[idx]
@@ -185,6 +185,34 @@ def test_isxd_to_binary_multiplane_frame_count_and_means(tmp_path, monkeypatch):
     p1 = np.fromfile(dbs[1]["reg_file"], dtype=np.int16).reshape(-1, dbs[1]["Ly"], dbs[1]["Lx"])
     np.testing.assert_array_equal(p0, frames[[0, 2]])
     np.testing.assert_array_equal(p1, frames[[1, 3]])
+
+
+def test_isxd_to_binary_rejects_incomplete_two_channel_pair(tmp_path, monkeypatch):
+    frames = np.array(
+        [
+            [[1, 1], [1, 1]],
+            [[10, 10], [10, 10]],
+            [[3, 3], [3, 3]],
+        ],
+        dtype=np.int16,
+    )
+    with pytest.raises(ValueError, match="not divisible by interleave"):
+        _run_isxd_to_binary(
+            tmp_path, monkeypatch, frames=frames, nplanes=1, nchannels=2, functional_chan=1, batch_size=3
+        )
+
+
+def test_isxd_to_binary_rejects_inconsistent_frame_shape(tmp_path, monkeypatch):
+    frames = [
+        np.array([[1, 1], [1, 1]], dtype=np.int16),
+        np.array([[2, 2], [2, 2]], dtype=np.int16),
+        np.array([[3, 3, 3], [3, 3, 3]], dtype=np.int16),
+        np.array([[4, 4, 4], [4, 4, 4]], dtype=np.int16),
+    ]
+    with pytest.raises(ValueError, match="must be 3D|Inconsistent ISXD frame shape"):
+        _run_isxd_to_binary(
+            tmp_path, monkeypatch, frames=frames, nplanes=1, nchannels=2, functional_chan=1, batch_size=2
+        )
 
 
 def test_that_bin_movie_without_badframes_results_in_a_same_size_array(binfile1500):

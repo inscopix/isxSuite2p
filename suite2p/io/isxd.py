@@ -50,6 +50,37 @@ def _validate_isxd_to_binary_inputs(dbs, reg_file_chan2):
     return nplanes, nchannels
 
 
+def _validate_frame_shape(frame, ly, lx):
+    if frame.ndim != 2:
+        raise ValueError(f"ISXD frames must be 2D, got shape {frame.shape}.")
+    if frame.shape[0] != ly or frame.shape[1] != lx:
+        raise ValueError(
+            f"Inconsistent ISXD frame shape. Expected {(ly, lx)}, got {frame.shape}."
+        )
+
+
+def _validate_file_frame_count(fname, nframes, interleave):
+    if nframes == 0:
+        return False
+    if nframes % interleave != 0:
+        raise ValueError(
+            f"ISXD file {fname} has {nframes} frames, which is not divisible by "
+            f"interleave={interleave}. Incomplete plane/channel cycle is not supported."
+        )
+    return True
+
+
+def _validate_chunk_and_get_shape(im):
+    if im.ndim != 3:
+        raise ValueError(f"ISXD chunks must be 3D (frames, Ly, Lx), got shape {im.shape}.")
+    return im.shape[1], im.shape[2]
+
+
+def _validate_initialized_state(has_initialized):
+    if not has_initialized:
+        raise ValueError("No frames were found in ISXD input files.")
+
+
 def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
     """  finds Inscopix isxd files and writes them to binaries
 
@@ -79,7 +110,7 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
 
     nfunc = dbs[0]["functional_chan"] - 1 if nchannels == 2 else 0
     interleave = 2 if nchannels == 2 else nplanes
-    batch_size = max(1, interleave * int(np.ceil(dbs[0]["batch_size"] / interleave)))
+    batch_size = max(interleave, interleave * int(np.ceil(dbs[0]["batch_size"] / interleave)))
 
     # open all binary files for writing
     file_list = dbs[0]["file_list"]
@@ -88,7 +119,7 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
     for ifile, fname in enumerate(file_list):
         f = isx.Movie.read(fname)
         nframes = f.timing.num_samples
-        if nframes == 0:
+        if not _validate_file_frame_count(fname, nframes, interleave):
             continue
         iblocks = np.arange(0, nframes, batch_size)
         if iblocks[-1] < nframes:
@@ -99,7 +130,7 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
         for ichunk, onset in enumerate(iblocks[:-1]):
             offset = iblocks[ichunk + 1]
             im = np.array([f.get_frame_data(x) for x in np.arange(onset, offset)])
-            ly, lx = im.shape[1], im.shape[2]
+            chunk_ly, chunk_lx = _validate_chunk_and_get_shape(im)
 
             if not has_initialized:
                 _init_plane_accumulators(
@@ -107,10 +138,13 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
                     nplanes=nplanes,
                     nchannels=nchannels,
                     file_count=len(file_list),
-                    ly=ly,
-                    lx=lx,
+                    ly=chunk_ly,
+                    lx=chunk_lx,
                 )
+                ly, lx = chunk_ly, chunk_lx
                 has_initialized = True
+            else:
+                _validate_frame_shape(im[0], ly, lx)
 
             if nchannels == 2:
                 # multi-channel data (nplanes == 1)
@@ -146,11 +180,7 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
                         ifile=ifile,
                         count_frames=True,
                     )
-            else:
-                raise ValueError(f"Unsupported nchannels value: {nchannels}")
-
-    if not has_initialized:
-        raise ValueError("No frames were found in ISXD input files.")
+    _validate_initialized_state(has_initialized)
 
     # write ops files
     do_registration = settings["run"]["do_registration"]
