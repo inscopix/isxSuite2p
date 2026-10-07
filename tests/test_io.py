@@ -215,6 +215,31 @@ def test_isxd_to_binary_rejects_inconsistent_frame_shape(tmp_path, monkeypatch):
         )
 
 
+def test_isxd_to_binary_uint16_scaling_matches_binary_and_mean(tmp_path, monkeypatch):
+    frames = np.array(
+        [
+            [[65535, 65535], [65535, 65535]],  # functional
+            [[1000, 1000], [1000, 1000]],      # chan2
+            [[32768, 32768], [32768, 32768]],  # functional
+            [[2000, 2000], [2000, 2000]],      # chan2
+        ],
+        dtype=np.uint16,
+    )
+    dbs = _run_isxd_to_binary(
+        tmp_path, monkeypatch, frames=frames, nplanes=1, nchannels=2, functional_chan=1, batch_size=4
+    )
+    db = dbs[0]
+    functional = np.fromfile(db["reg_file"], dtype=np.int16).reshape(-1, db["Ly"], db["Lx"])
+    chan2 = np.fromfile(db["reg_file_chan2"], dtype=np.int16).reshape(-1, db["Ly"], db["Lx"])
+
+    expected_functional = (frames[[0, 2]] // 2).astype(np.int16)
+    expected_chan2 = (frames[[1, 3]] // 2).astype(np.int16)
+    np.testing.assert_array_equal(functional, expected_functional)
+    np.testing.assert_array_equal(chan2, expected_chan2)
+    np.testing.assert_allclose(db["meanImg"], expected_functional.astype(np.float32).mean(axis=0))
+    np.testing.assert_allclose(db["meanImg_chan2"], expected_chan2.astype(np.float32).mean(axis=0))
+
+
 def test_that_bin_movie_without_badframes_results_in_a_same_size_array(binfile1500):
     yrange = (0, binfile1500.Ly)
     xrange = (0, binfile1500.Lx)

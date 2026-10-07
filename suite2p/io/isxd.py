@@ -22,7 +22,8 @@ def _init_plane_accumulators(dbs, nplanes, nchannels, file_count, ly, lx):
 def _write_and_accumulate(db, frame_block, out_file, mean_key, ifile, count_frames):
     if frame_block.shape[0] == 0:
         return
-    out_file.write(bytearray(frame_block.astype("int16")))
+    frame_block = _coerce_frames_for_binary(frame_block)
+    out_file.write(bytearray(frame_block))
     db[mean_key] += frame_block.astype(np.float32).sum(axis=0)
     if count_frames:
         db["nframes"] += frame_block.shape[0]
@@ -79,6 +80,16 @@ def _validate_chunk_and_get_shape(im):
 def _validate_initialized_state(has_initialized):
     if not has_initialized:
         raise ValueError("No frames were found in ISXD input files.")
+
+
+def _coerce_frames_for_binary(frame_block):
+    if frame_block.dtype.type == np.uint16:
+        return (frame_block // 2).astype(np.int16)
+    if frame_block.dtype.type == np.int32:
+        return (frame_block // 2).astype(np.int16)
+    if frame_block.dtype.type != np.int16:
+        return frame_block.astype(np.int16)
+    return frame_block
 
 
 def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
