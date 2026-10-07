@@ -2,12 +2,16 @@
 Tests for the Suite2p IO module
 """
 from pathlib import Path
+from types import SimpleNamespace
+import contextlib
 
 import numpy as np
 import pytest
+import suite2p
 from natsort import natsorted
 from pynwb import NWBHDF5IO
 from suite2p import io
+from suite2p.io import isxd as isxd_io
 from suite2p.io.nwb import read_nwb, save_nwb
 from suite2p.io.utils import get_suite2p_path
 from suite2p.detection.detect import bin_movie
@@ -85,6 +89,102 @@ def test_h5_to_binary_produces_nonnegative_output_data(test_settings):
         Lx=dbs[0]["Lx"],
     ).data
     assert np.all(output_data >= 0)
+
+
+def _run_isxd_to_binary(tmp_path, monkeypatch, *, frames, nplanes, nchannels, functional_chan=1, batch_size=3):
+    class FakeMovie:
+        def __init__(self, frames_):
+            self._frames = frames_
+            self.timing = SimpleNamespace(num_samples=frames_.shape[0])
+
+        def get_frame_data(self, idx):
+            return self._frames[idx]
+
+    fake_isx = SimpleNamespace(
+        Movie=SimpleNamespace(read=lambda _fname: FakeMovie(frames))
+    )
+    monkeypatch.setattr(isxd_io, "HAS_ISX", True)
+    monkeypatch.setattr(isxd_io, "isx", fake_isx)
+
+    db = suite2p.default_db()
+    settings = suite2p.default_settings()
+    db.update(
+        {
+            "data_path": [tmp_path],
+            "save_path0": str(tmp_path),
+            "input_format": "isxd",
+            "file_list": [str(tmp_path.joinpath("fake.isxd"))],
+            "nplanes": nplanes,
+            "nchannels": nchannels,
+            "functional_chan": functional_chan,
+            "batch_size": batch_size,
+        }
+    )
+
+    dbs = io.init_dbs(db)
+    with contextlib.ExitStack() as stack:
+        fnames = [db_item["reg_file"] for db_item in dbs]
+        files = [stack.enter_context(open(f, "wb")) for f in fnames]
+        if nchannels > 1:
+            fnames_chan2 = [db_item["reg_file_chan2"] for db_item in dbs]
+            files_chan2 = [stack.enter_context(open(f, "wb")) for f in fnames_chan2]
+        else:
+            files_chan2 = None
+        dbs = isxd_io.isxd_to_binary(dbs, settings, files, files_chan2)
+    return dbs
+
+
+def test_isxd_to_binary_multichannel_frame_count_and_means(tmp_path, monkeypatch):
+    frames = np.array(
+        [
+            [[1, 1], [1, 1]],    # functional
+            [[10, 10], [10, 10]],  # chan2
+            [[3, 3], [3, 3]],    # functional
+            [[30, 30], [30, 30]],  # chan2
+        ],
+        dtype=np.int16,
+    )
+    dbs = _run_isxd_to_binary(
+        tmp_path, monkeypatch, frames=frames, nplanes=1, nchannels=2, functional_chan=1, batch_size=3
+    )
+    db = dbs[0]
+
+    assert db["nframes"] == 2
+    np.testing.assert_array_equal(db["nframes_per_folder"], np.array([2], dtype=np.int32))
+    np.testing.assert_allclose(db["meanImg"], np.array([[2, 2], [2, 2]], dtype=np.float32))
+    np.testing.assert_allclose(db["meanImg_chan2"], np.array([[20, 20], [20, 20]], dtype=np.float32))
+
+    functional = np.fromfile(db["reg_file"], dtype=np.int16).reshape(-1, db["Ly"], db["Lx"])
+    chan2 = np.fromfile(db["reg_file_chan2"], dtype=np.int16).reshape(-1, db["Ly"], db["Lx"])
+    np.testing.assert_array_equal(functional, frames[[0, 2]])
+    np.testing.assert_array_equal(chan2, frames[[1, 3]])
+
+
+def test_isxd_to_binary_multiplane_frame_count_and_means(tmp_path, monkeypatch):
+    frames = np.array(
+        [
+            [[1, 1], [1, 1]],    # plane 0
+            [[10, 10], [10, 10]],  # plane 1
+            [[3, 3], [3, 3]],    # plane 0
+            [[30, 30], [30, 30]],  # plane 1
+        ],
+        dtype=np.int16,
+    )
+    dbs = _run_isxd_to_binary(
+        tmp_path, monkeypatch, frames=frames, nplanes=2, nchannels=1, batch_size=3
+    )
+
+    assert dbs[0]["nframes"] == 2
+    assert dbs[1]["nframes"] == 2
+    np.testing.assert_array_equal(dbs[0]["nframes_per_folder"], np.array([2], dtype=np.int32))
+    np.testing.assert_array_equal(dbs[1]["nframes_per_folder"], np.array([2], dtype=np.int32))
+    np.testing.assert_allclose(dbs[0]["meanImg"], np.array([[2, 2], [2, 2]], dtype=np.float32))
+    np.testing.assert_allclose(dbs[1]["meanImg"], np.array([[20, 20], [20, 20]], dtype=np.float32))
+
+    p0 = np.fromfile(dbs[0]["reg_file"], dtype=np.int16).reshape(-1, dbs[0]["Ly"], dbs[0]["Lx"])
+    p1 = np.fromfile(dbs[1]["reg_file"], dtype=np.int16).reshape(-1, dbs[1]["Ly"], dbs[1]["Lx"])
+    np.testing.assert_array_equal(p0, frames[[0, 2]])
+    np.testing.assert_array_equal(p1, frames[[1, 3]])
 
 
 def test_that_bin_movie_without_badframes_results_in_a_same_size_array(binfile1500):
