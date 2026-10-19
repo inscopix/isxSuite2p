@@ -1,6 +1,7 @@
 """
 Tests for the Suite2p IO module
 """
+
 from pathlib import Path
 from types import SimpleNamespace
 import contextlib
@@ -19,6 +20,7 @@ from suite2p.detection.detect import bin_movie
 
 @pytest.fixture()
 def binfile1500(test_settings):
+    """Create a BinaryFile fixture backed by TIFF input with 1,500 frames."""
     db, settings = test_settings
     db["file_list"] = ["input_1500.tif"]
     db["input_format"] = "tif"
@@ -33,6 +35,7 @@ def binfile1500(test_settings):
 
     # Open binary files for writing
     import contextlib
+
     with contextlib.ExitStack() as stack:
         raw_str = "raw" if db.get("keep_movie_raw", False) else "reg"
         fnames = [db_item[f"{raw_str}_file"] for db_item in dbs]
@@ -70,6 +73,7 @@ def test_h5_to_binary_produces_nonnegative_output_data(test_settings):
 
     # Open binary files for writing
     import contextlib
+
     with contextlib.ExitStack() as stack:
         raw_str = "raw" if db.get("keep_movie_raw", False) else "reg"
         fnames = [db_item[f"{raw_str}_file"] for db_item in dbs]
@@ -91,7 +95,18 @@ def test_h5_to_binary_produces_nonnegative_output_data(test_settings):
     assert np.all(output_data >= 0)
 
 
-def _run_isxd_to_binary(tmp_path, monkeypatch, *, frames, nplanes, nchannels, functional_chan=1, batch_size=3):
+def _run_isxd_to_binary(
+    tmp_path,
+    monkeypatch,
+    *,
+    frames,
+    nplanes,
+    nchannels,
+    functional_chan=1,
+    batch_size=3,
+):
+    """Run ISXD conversion with a mocked isx backend and return updated plane dbs."""
+
     class FakeMovie:
         def __init__(self, frames_):
             self._frames = [np.asarray(f) for f in frames_]
@@ -137,25 +152,41 @@ def _run_isxd_to_binary(tmp_path, monkeypatch, *, frames, nplanes, nchannels, fu
 def test_isxd_to_binary_multichannel_frame_count_and_means(tmp_path, monkeypatch):
     frames = np.array(
         [
-            [[1, 1], [1, 1]],    # functional
+            [[1, 1], [1, 1]],  # functional
             [[10, 10], [10, 10]],  # chan2
-            [[3, 3], [3, 3]],    # functional
+            [[3, 3], [3, 3]],  # functional
             [[30, 30], [30, 30]],  # chan2
         ],
         dtype=np.int16,
     )
     dbs = _run_isxd_to_binary(
-        tmp_path, monkeypatch, frames=frames, nplanes=1, nchannels=2, functional_chan=1, batch_size=3
+        tmp_path,
+        monkeypatch,
+        frames=frames,
+        nplanes=1,
+        nchannels=2,
+        functional_chan=1,
+        batch_size=3,
     )
     db = dbs[0]
 
     assert db["nframes"] == 2
-    np.testing.assert_array_equal(db["nframes_per_folder"], np.array([2], dtype=np.int32))
-    np.testing.assert_allclose(db["meanImg"], np.array([[2, 2], [2, 2]], dtype=np.float32))
-    np.testing.assert_allclose(db["meanImg_chan2"], np.array([[20, 20], [20, 20]], dtype=np.float32))
+    np.testing.assert_array_equal(
+        db["nframes_per_folder"], np.array([2], dtype=np.int32)
+    )
+    np.testing.assert_allclose(
+        db["meanImg"], np.array([[2, 2], [2, 2]], dtype=np.float32)
+    )
+    np.testing.assert_allclose(
+        db["meanImg_chan2"], np.array([[20, 20], [20, 20]], dtype=np.float32)
+    )
 
-    functional = np.fromfile(db["reg_file"], dtype=np.int16).reshape(-1, db["Ly"], db["Lx"])
-    chan2 = np.fromfile(db["reg_file_chan2"], dtype=np.int16).reshape(-1, db["Ly"], db["Lx"])
+    functional = np.fromfile(db["reg_file"], dtype=np.int16).reshape(
+        -1, db["Ly"], db["Lx"]
+    )
+    chan2 = np.fromfile(db["reg_file_chan2"], dtype=np.int16).reshape(
+        -1, db["Ly"], db["Lx"]
+    )
     np.testing.assert_array_equal(functional, frames[[0, 2]])
     np.testing.assert_array_equal(chan2, frames[[1, 3]])
 
@@ -163,9 +194,9 @@ def test_isxd_to_binary_multichannel_frame_count_and_means(tmp_path, monkeypatch
 def test_isxd_to_binary_multiplane_frame_count_and_means(tmp_path, monkeypatch):
     frames = np.array(
         [
-            [[1, 1], [1, 1]],    # plane 0
+            [[1, 1], [1, 1]],  # plane 0
             [[10, 10], [10, 10]],  # plane 1
-            [[3, 3], [3, 3]],    # plane 0
+            [[3, 3], [3, 3]],  # plane 0
             [[30, 30], [30, 30]],  # plane 1
         ],
         dtype=np.int16,
@@ -176,13 +207,25 @@ def test_isxd_to_binary_multiplane_frame_count_and_means(tmp_path, monkeypatch):
 
     assert dbs[0]["nframes"] == 2
     assert dbs[1]["nframes"] == 2
-    np.testing.assert_array_equal(dbs[0]["nframes_per_folder"], np.array([2], dtype=np.int32))
-    np.testing.assert_array_equal(dbs[1]["nframes_per_folder"], np.array([2], dtype=np.int32))
-    np.testing.assert_allclose(dbs[0]["meanImg"], np.array([[2, 2], [2, 2]], dtype=np.float32))
-    np.testing.assert_allclose(dbs[1]["meanImg"], np.array([[20, 20], [20, 20]], dtype=np.float32))
+    np.testing.assert_array_equal(
+        dbs[0]["nframes_per_folder"], np.array([2], dtype=np.int32)
+    )
+    np.testing.assert_array_equal(
+        dbs[1]["nframes_per_folder"], np.array([2], dtype=np.int32)
+    )
+    np.testing.assert_allclose(
+        dbs[0]["meanImg"], np.array([[2, 2], [2, 2]], dtype=np.float32)
+    )
+    np.testing.assert_allclose(
+        dbs[1]["meanImg"], np.array([[20, 20], [20, 20]], dtype=np.float32)
+    )
 
-    p0 = np.fromfile(dbs[0]["reg_file"], dtype=np.int16).reshape(-1, dbs[0]["Ly"], dbs[0]["Lx"])
-    p1 = np.fromfile(dbs[1]["reg_file"], dtype=np.int16).reshape(-1, dbs[1]["Ly"], dbs[1]["Lx"])
+    p0 = np.fromfile(dbs[0]["reg_file"], dtype=np.int16).reshape(
+        -1, dbs[0]["Ly"], dbs[0]["Lx"]
+    )
+    p1 = np.fromfile(dbs[1]["reg_file"], dtype=np.int16).reshape(
+        -1, dbs[1]["Ly"], dbs[1]["Lx"]
+    )
     np.testing.assert_array_equal(p0, frames[[0, 2]])
     np.testing.assert_array_equal(p1, frames[[1, 3]])
 
@@ -198,7 +241,13 @@ def test_isxd_to_binary_rejects_incomplete_two_channel_pair(tmp_path, monkeypatc
     )
     with pytest.raises(ValueError, match="not divisible by interleave"):
         _run_isxd_to_binary(
-            tmp_path, monkeypatch, frames=frames, nplanes=1, nchannels=2, functional_chan=1, batch_size=3
+            tmp_path,
+            monkeypatch,
+            frames=frames,
+            nplanes=1,
+            nchannels=2,
+            functional_chan=1,
+            batch_size=3,
         )
 
 
@@ -211,7 +260,13 @@ def test_isxd_to_binary_rejects_inconsistent_frame_shape(tmp_path, monkeypatch):
     ]
     with pytest.raises(ValueError, match="must be 3D|Inconsistent ISXD frame shape"):
         _run_isxd_to_binary(
-            tmp_path, monkeypatch, frames=frames, nplanes=1, nchannels=2, functional_chan=1, batch_size=2
+            tmp_path,
+            monkeypatch,
+            frames=frames,
+            nplanes=1,
+            nchannels=2,
+            functional_chan=1,
+            batch_size=2,
         )
 
 
@@ -219,25 +274,39 @@ def test_isxd_to_binary_uint16_scaling_matches_binary_and_mean(tmp_path, monkeyp
     frames = np.array(
         [
             [[65535, 65535], [65535, 65535]],  # functional
-            [[1000, 1000], [1000, 1000]],      # chan2
+            [[1000, 1000], [1000, 1000]],  # chan2
             [[32768, 32768], [32768, 32768]],  # functional
-            [[2000, 2000], [2000, 2000]],      # chan2
+            [[2000, 2000], [2000, 2000]],  # chan2
         ],
         dtype=np.uint16,
     )
     dbs = _run_isxd_to_binary(
-        tmp_path, monkeypatch, frames=frames, nplanes=1, nchannels=2, functional_chan=1, batch_size=4
+        tmp_path,
+        monkeypatch,
+        frames=frames,
+        nplanes=1,
+        nchannels=2,
+        functional_chan=1,
+        batch_size=4,
     )
     db = dbs[0]
-    functional = np.fromfile(db["reg_file"], dtype=np.int16).reshape(-1, db["Ly"], db["Lx"])
-    chan2 = np.fromfile(db["reg_file_chan2"], dtype=np.int16).reshape(-1, db["Ly"], db["Lx"])
+    functional = np.fromfile(db["reg_file"], dtype=np.int16).reshape(
+        -1, db["Ly"], db["Lx"]
+    )
+    chan2 = np.fromfile(db["reg_file_chan2"], dtype=np.int16).reshape(
+        -1, db["Ly"], db["Lx"]
+    )
 
     expected_functional = (frames[[0, 2]] // 2).astype(np.int16)
     expected_chan2 = (frames[[1, 3]] // 2).astype(np.int16)
     np.testing.assert_array_equal(functional, expected_functional)
     np.testing.assert_array_equal(chan2, expected_chan2)
-    np.testing.assert_allclose(db["meanImg"], expected_functional.astype(np.float32).mean(axis=0))
-    np.testing.assert_allclose(db["meanImg_chan2"], expected_chan2.astype(np.float32).mean(axis=0))
+    np.testing.assert_allclose(
+        db["meanImg"], expected_functional.astype(np.float32).mean(axis=0)
+    )
+    np.testing.assert_allclose(
+        db["meanImg_chan2"], expected_chan2.astype(np.float32).mean(axis=0)
+    )
 
 
 def test_that_bin_movie_without_badframes_results_in_a_same_size_array(binfile1500):
@@ -254,12 +323,14 @@ def test_that_bin_movie_with_badframes_results_in_a_smaller_array(binfile1500):
     badframes = np.random.random(size=binfile1500.n_frames) < 0.3
     yrange = (0, binfile1500.Ly)
     xrange = (0, binfile1500.Lx)
-    mov = bin_movie(binfile1500.data, bin_size=1, yrange=yrange, xrange=xrange, badframes=badframes)
+    mov = bin_movie(
+        binfile1500.data, bin_size=1, yrange=yrange, xrange=xrange, badframes=badframes
+    )
 
     assert len(mov) < binfile1500.n_frames, "bin_movie didn't produce a smaller array."
-    assert len(mov) == len(badframes) - sum(
-        badframes
-    ), "bin_movie didn't produce the right size array."
+    assert len(mov) == len(badframes) - sum(badframes), (
+        "bin_movie didn't produce the right size array."
+    )
 
 
 def test_that_binaryfile_data_is_repeatable(binfile1500):
@@ -271,12 +342,13 @@ def test_that_binaryfile_data_is_repeatable(binfile1500):
 
     assert np.allclose(data1, data2)
 
+
 @pytest.mark.parametrize(
     "data_folder",
     [
         ("1plane1chan1500"),
         ("2plane2chan1500"),
-        #("bruker"),
+        # ("bruker"),
     ],
 )
 def test_nwb_round_trip(data_folder):
@@ -287,38 +359,51 @@ def test_nwb_round_trip(data_folder):
     print(save_folder)
 
     # Load expected data from plane folders
-    plane_folders = natsorted([
-        f for f in save_folder.iterdir()
-        if f.is_dir() and f.name.startswith("plane")
-    ])
+    plane_folders = natsorted(
+        [f for f in save_folder.iterdir() if f.is_dir() and f.name.startswith("plane")]
+    )
 
     # Concatenate data across planes
-    expected_F = np.concatenate([
-        np.load(plane_dir.joinpath("F.npy"), allow_pickle=True)
-        for plane_dir in plane_folders
-    ], axis=0)
+    expected_F = np.concatenate(
+        [
+            np.load(plane_dir.joinpath("F.npy"), allow_pickle=True)
+            for plane_dir in plane_folders
+        ],
+        axis=0,
+    )
 
-    expected_Fneu = np.concatenate([
-        np.load(plane_dir.joinpath("Fneu.npy"), allow_pickle=True)
-        for plane_dir in plane_folders
-    ], axis=0)
+    expected_Fneu = np.concatenate(
+        [
+            np.load(plane_dir.joinpath("Fneu.npy"), allow_pickle=True)
+            for plane_dir in plane_folders
+        ],
+        axis=0,
+    )
 
-    expected_spks = np.concatenate([
-        np.load(plane_dir.joinpath("spks.npy"), allow_pickle=True)
-        for plane_dir in plane_folders
-    ], axis=0)
+    expected_spks = np.concatenate(
+        [
+            np.load(plane_dir.joinpath("spks.npy"), allow_pickle=True)
+            for plane_dir in plane_folders
+        ],
+        axis=0,
+    )
 
-    expected_iscell = np.concatenate([
-        np.load(plane_dir.joinpath("iscell.npy"), allow_pickle=True)
-        for plane_dir in plane_folders
-    ], axis=0)
+    expected_iscell = np.concatenate(
+        [
+            np.load(plane_dir.joinpath("iscell.npy"), allow_pickle=True)
+            for plane_dir in plane_folders
+        ],
+        axis=0,
+    )
 
-    expected_stat = np.concatenate([
-        np.load(plane_dir.joinpath("stat.npy"), allow_pickle=True)
-        for plane_dir in plane_folders
-    ], axis=0)
+    expected_stat = np.concatenate(
+        [
+            np.load(plane_dir.joinpath("stat.npy"), allow_pickle=True)
+            for plane_dir in plane_folders
+        ],
+        axis=0,
+    )
 
-    
     # Save as NWB file
     save_nwb(save_folder)
 
@@ -367,9 +452,11 @@ def test_nwb_round_trip(data_folder):
     # so we can't directly compare with the original plane-local coordinates
     if "2plane" not in data_folder:
         for i in range(len(stat)):
-            np.testing.assert_array_equal(stat[i]['ypix'], expected_stat[i]['ypix'])
-            np.testing.assert_array_equal(stat[i]['xpix'], expected_stat[i]['xpix'])
-            np.testing.assert_allclose(stat[i]['lam'], expected_stat[i]['lam'], rtol=1e-5)
+            np.testing.assert_array_equal(stat[i]["ypix"], expected_stat[i]["ypix"])
+            np.testing.assert_array_equal(stat[i]["xpix"], expected_stat[i]["xpix"])
+            np.testing.assert_allclose(
+                stat[i]["lam"], expected_stat[i]["lam"], rtol=1e-5
+            )
 
     # # Check settings - compare key fields that are preserved
     # # For multiplane data, dimensions are for the composite image
@@ -403,7 +490,6 @@ def test_nwb_round_trip(data_folder):
         ("/etc/bla/kjkcc/jodendopn/", "", False),
     ],
 )
-
 def test_get_suite2p_path(input_path, expected_path, success):
     if success:
         res_path = get_suite2p_path(input_path)

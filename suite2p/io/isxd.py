@@ -1,16 +1,19 @@
 """
 Copyright © 2024 Inscopix, Inc., a Bruker company. Authored by Ludovic Bellier.
 """
+
 import numpy as np
 
 try:
     import isx
+
     HAS_ISX = True
 except (ModuleNotFoundError, ImportError):
     HAS_ISX = False
 
 
 def _init_plane_accumulators(dbs, nplanes, nchannels, file_count, ly, lx):
+    """Initialize per-plane frame counters and mean-image accumulators."""
     for j in range(nplanes):
         dbs[j]["nframes_per_folder"] = np.zeros(file_count, np.int32)
         dbs[j]["meanImg"] = np.zeros((ly, lx), np.float32)
@@ -20,6 +23,7 @@ def _init_plane_accumulators(dbs, nplanes, nchannels, file_count, ly, lx):
 
 
 def _write_and_accumulate(db, frame_block, out_file, mean_key, ifile, count_frames):
+    """Write a frame block to binary output and accumulate its per-pixel sum."""
     if frame_block.shape[0] == 0:
         return
     frame_block = _coerce_frames_for_binary(frame_block)
@@ -31,8 +35,11 @@ def _write_and_accumulate(db, frame_block, out_file, mean_key, ifile, count_fram
 
 
 def _validate_isxd_to_binary_inputs(dbs, reg_file_chan2):
+    """Validate ISXD conversion constraints and return normalized layout values."""
     if not HAS_ISX:
-        raise ImportError("Inscopix isx is required for this file type, please 'pip install isx'")
+        raise ImportError(
+            "Inscopix isx is required for this file type, please 'pip install isx'"
+        )
 
     nplanes = dbs[0]["nplanes"]
     nchannels = dbs[0]["nchannels"]
@@ -44,7 +51,9 @@ def _validate_isxd_to_binary_inputs(dbs, reg_file_chan2):
             "Please set either nplanes == 1 or nchannels == 1."
         )
     if nchannels == 2 and reg_file_chan2 is None:
-        raise ValueError("Second channel output file handle is required when nchannels == 2.")
+        raise ValueError(
+            "Second channel output file handle is required when nchannels == 2."
+        )
     if nchannels == 2 and dbs[0]["functional_chan"] not in (1, 2):
         raise ValueError("functional_chan must be 1 or 2 when nchannels == 2.")
 
@@ -52,6 +61,7 @@ def _validate_isxd_to_binary_inputs(dbs, reg_file_chan2):
 
 
 def _validate_frame_shape(frame, ly, lx):
+    """Ensure a single frame matches expected 2D dimensions."""
     if frame.ndim != 2:
         raise ValueError(f"ISXD frames must be 2D, got shape {frame.shape}.")
     if frame.shape[0] != ly or frame.shape[1] != lx:
@@ -61,6 +71,7 @@ def _validate_frame_shape(frame, ly, lx):
 
 
 def _validate_file_frame_count(fname, nframes, interleave):
+    """Check frame count is non-empty and aligned to plane/channel interleave."""
     if nframes == 0:
         return False
     if nframes % interleave != 0:
@@ -72,17 +83,22 @@ def _validate_file_frame_count(fname, nframes, interleave):
 
 
 def _validate_chunk_and_get_shape(im):
+    """Validate chunk rank and return chunk spatial dimensions."""
     if im.ndim != 3:
-        raise ValueError(f"ISXD chunks must be 3D (frames, Ly, Lx), got shape {im.shape}.")
+        raise ValueError(
+            f"ISXD chunks must be 3D (frames, Ly, Lx), got shape {im.shape}."
+        )
     return im.shape[1], im.shape[2]
 
 
 def _validate_initialized_state(has_initialized):
+    """Fail when no usable frames were observed in any input file."""
     if not has_initialized:
         raise ValueError("No frames were found in ISXD input files.")
 
 
 def _coerce_frames_for_binary(frame_block):
+    """Convert frames to int16, downscaling higher-depth integer inputs by 2."""
     if frame_block.dtype.type == np.uint16:
         return (frame_block // 2).astype(np.int16)
     if frame_block.dtype.type == np.int32:
@@ -93,7 +109,7 @@ def _coerce_frames_for_binary(frame_block):
 
 
 def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
-    """  finds Inscopix isxd files and writes them to binaries
+    """finds Inscopix isxd files and writes them to binaries
 
     Parameters
     ----------
@@ -121,7 +137,9 @@ def isxd_to_binary(dbs, settings, reg_file, reg_file_chan2):
 
     nfunc = dbs[0]["functional_chan"] - 1 if nchannels == 2 else 0
     interleave = 2 if nchannels == 2 else nplanes
-    batch_size = max(interleave, interleave * int(np.ceil(dbs[0]["batch_size"] / interleave)))
+    batch_size = max(
+        interleave, interleave * int(np.ceil(dbs[0]["batch_size"] / interleave))
+    )
 
     # open all binary files for writing
     file_list = dbs[0]["file_list"]
