@@ -97,7 +97,9 @@ def phasecorr(frames, cfRefImg, maskMul, maskOffset, maxregshift, smooth_sigma_t
     cc = torch.real(cc)
     
     cc = temporal_smooth(cc, smooth_sigma_time) if smooth_sigma_time > 0 else cc
-
+    # for cpu-mode this is necessary
+    if isinstance(cc, np.ndarray):
+        cc = torch.from_numpy(cc).to(frames.device).float()
     imax = torch.stack([torch.argmax(cc[t]) for t in range(data.shape[0])], dim=0)
     ymax, xmax = torch.div(imax, 2 * lcorr + 1, rounding_mode="floor"), imax % (2 * lcorr + 1)
     cmax = cc[torch.arange(len(cc)), ymax, xmax]

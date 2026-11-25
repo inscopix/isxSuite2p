@@ -127,9 +127,10 @@ def roi_detect(mproj, diameter=None, settings=None,
     logger.info("!NOTE! diameter set to %0.2f for cell detection with cellpose" %
                 diameter[1])
 
-    pretrained_model = "cpsam" if pretrained_model is None else pretrained_model
+    settings = {} if settings is None else settings
+    pretrained_model = settings.get("cellpose_model", "cpsam") if pretrained_model is None else pretrained_model
     model = CellposeModel(pretrained_model=pretrained_model, gpu=True if core.use_gpu() else False)
-    params = settings["params"] if not chan2 else settings["chan2_params"]
+    params = settings.get("params") if not chan2 else settings.get("chan2_params")
     params = {} if params is None else params
     masks = model.eval(mproj, diameter=diameter[1],
                        cellprob_threshold=settings.get("cellprob_threshold", 0.0),

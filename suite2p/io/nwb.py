@@ -41,6 +41,7 @@ from .. import default_settings
 
 try:
     from pynwb import NWBHDF5IO, NWBFile
+    from pynwb.file import Subject
     from pynwb.base import Images
     from pynwb.image import GrayscaleImage
     from pynwb.ophys import (
@@ -52,7 +53,7 @@ try:
     )
 
     NWB = True
-except ModuleNotFoundError:
+except ImportError:
     NWB = False
 
 
@@ -374,6 +375,13 @@ def save_nwb(save_folder):
         )
         logger.info(nwbfile)
 
+        nwbfile.subject = Subject(
+            subject_id="subject",
+            species="Species",
+            age="N/A",
+            sex="N/A"
+        )
+
         device = nwbfile.create_device(
             name="Microscope",
             description="My two-photon microscope",
@@ -398,7 +406,11 @@ def save_nwb(save_folder):
             grid_spacing_unit="microns",
         )
         # link to external data
-        external_data = settings["filelist"] if "filelist" in settings else [""]
+        external_data = [""]
+        if settings.get("filelist") and settings["filelist"] != [""]:
+            f0 = settings["filelist"][0]
+            if isinstance(f0, str) and f0.lower().endswith(".ome.tif"):
+                external_data = [f0]
         image_series = TwoPhotonSeries(
             name="TwoPhotonSeries",
             dimension=[dbs[0]["Ly"], dbs[0]["Lx"]],
